@@ -1,0 +1,107 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.141'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
+
+repositories {
+    maven {
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+}
+
+dependencies {
+    compileOnly 'curse.maven:journeymap-32274:4873863'
+}
+
+sourceSets {
+    test {
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+
+legacyForge {
+    enable {
+        neoForgeVersion = "${minecraft_version}-${neo_version}"
+    }
+    validateAccessTransformers = true
+
+    runs {
+        client {
+            client()
+            gameDirectory = project.file('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+        }
+
+        server {
+            server()
+            gameDirectory = project.file('run')
+            systemProperty 'forge.logging.console.level', 'debug'
+            programArgument '--nogui'
+        }
+    }
+
+    mods {
+        chunklock {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version_range: minecraft_version_range,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_license            : mod_license
+    ]
+
+    inputs.properties replaceProperties
+
+    filesMatching('META-INF/mods.toml') {
+        expand replaceProperties
+    }
+}
+
+tasks.register('copyPackMetadataToClasses', Copy) {
+    from('src/main/resources/pack.mcmeta')
+    into(layout.buildDirectory.dir('classes/java/main'))
+}
+
+tasks.named('classes').configure {
+    dependsOn tasks.named('copyPackMetadataToClasses')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Jar).configureEach {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register('validateClaimStorage', JavaExec) {
+    group = 'verification'
+    description = 'Validates ChunkLock claim saved-data serialization and dimension key isolation.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.gogleox.chunklock.claim.ClaimSavedDataRoundTripTest'
+}
