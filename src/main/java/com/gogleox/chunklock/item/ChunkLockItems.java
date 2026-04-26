@@ -14,7 +14,7 @@ public final class ChunkLockItems {
 
     public static final RegistryObject<Item> CLAIM_STAKE = ITEMS.register(
             "claim_stake",
-            () -> new Item(new Item.Properties().stacksTo(1))
+            () -> new Item(new Item.Properties())
     );
 
     public static void register(IEventBus modEventBus) {
