@@ -2,15 +2,13 @@ package com.gogleox.chunklock.command;
 
 import com.gogleox.chunklock.claim.ClaimData;
 import com.gogleox.chunklock.claim.ClaimManager;
-import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.util.Collection;
 import java.util.Comparator;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,34 +29,26 @@ public final class ChunkLockCommands {
     public static void registerCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
 
-        dispatcher.register(Commands.literal("chunklock")
-                .then(Commands.literal("claim")
+        dispatcher.register(literal("chunklock")
+                .then(literal("claim")
                         .executes(context -> claimCurrentChunk(context.getSource())))
-                .then(Commands.literal("unclaim")
+                .then(literal("unclaim")
                         .executes(context -> unclaimCurrentChunk(context.getSource())))
-                .then(Commands.literal("info")
+                .then(literal("info")
                         .executes(context -> showCurrentChunkInfo(context.getSource())))
-                .then(Commands.literal("list")
+                .then(literal("list")
                         .executes(context -> listOwnClaims(context.getSource())))
-                .then(Commands.literal("reload")
+                .then(literal("reload")
                         .requires(source -> source.hasPermission(2))
                         .executes(context -> reloadConfig(context.getSource())))
-                .then(Commands.literal("admin")
+                .then(literal("admin")
                         .requires(source -> source.hasPermission(2))
-                        .then(Commands.literal("unclaim")
-                                .executes(context -> adminUnclaimCurrentChunk(context.getSource())))
-                        .then(Commands.literal("clearplayer")
-                                .then(Commands.argument("player", GameProfileArgument.gameProfile())
-                                        .executes(context -> adminClearPlayer(
-                                                context.getSource(),
-                                                GameProfileArgument.getGameProfiles(context, "player")
-                                        ))))
-                        .then(Commands.literal("listplayer")
-                                .then(Commands.argument("player", GameProfileArgument.gameProfile())
-                                        .executes(context -> adminListPlayer(
-                                                context.getSource(),
-                                                GameProfileArgument.getGameProfiles(context, "player")
-                                        ))))));
+                        .then(literal("unclaim")
+                                .executes(context -> adminUnclaimCurrentChunk(context.getSource())))));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> literal(String name) {
+        return LiteralArgumentBuilder.literal(name);
     }
 
     private static int claimCurrentChunk(CommandSourceStack source) throws CommandSyntaxException {
@@ -162,40 +152,6 @@ public final class ChunkLockCommands {
 
         source.sendFailure(Component.literal("Unable to remove this claim."));
         return 0;
-    }
-
-    private static int adminClearPlayer(CommandSourceStack source, Collection<GameProfile> profiles) {
-        int removed = 0;
-
-        for (GameProfile profile : profiles) {
-            if (profile.getId() == null) {
-                source.sendFailure(Component.literal("Could not resolve UUID for " + profile.getName() + "."));
-                continue;
-            }
-
-            removed += CLAIM_MANAGER.removeAllClaimsForPlayer(profile.getId());
-        }
-
-        int removedCount = removed;
-        source.sendSuccess(() -> Component.literal("Removed " + removedCount + " claim(s)."), true);
-        return removed;
-    }
-
-    private static int adminListPlayer(CommandSourceStack source, Collection<GameProfile> profiles) {
-        int total = 0;
-
-        for (GameProfile profile : profiles) {
-            if (profile.getId() == null) {
-                source.sendFailure(Component.literal("Could not resolve UUID for " + profile.getName() + "."));
-                continue;
-            }
-
-            Collection<ClaimData> claims = CLAIM_MANAGER.getClaimsForPlayer(profile.getId());
-            sendClaimList(source, "Claimed chunks for " + profile.getName(), claims);
-            total += claims.size();
-        }
-
-        return total;
     }
 
     private static void sendClaimList(CommandSourceStack source, String title, Collection<ClaimData> claims) {
