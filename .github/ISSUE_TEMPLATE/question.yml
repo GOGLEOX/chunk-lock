@@ -1,0 +1,103 @@
+name: Question
+description: Ask a usage, configuration, gameplay, or server administration question about Chunk Lock.
+title: "[Question]: "
+labels: ["question", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for questions about how Chunk Lock works, configuration help, setup guidance, or troubleshooting that may not be a confirmed bug.
+
+        Before opening a question, please review the FAQ:
+        https://github.com/GOGLEOX/chunk-lock/wiki/FAQ
+
+  - type: dropdown
+    id: question_type
+    attributes:
+      label: Question Type
+      description: What kind of question are you asking?
+      options:
+        - Gameplay
+        - Claim system
+        - Trust system
+        - Commands
+        - Configuration
+        - Claim tool uses
+        - Claim tool repair
+        - HUD/visualization
+        - Server administration
+        - Modpack setup
+        - Compatibility
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: chunklock_version
+    attributes:
+      label: Chunk Lock Version
+      placeholder: "Example: 1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: minecraft_version
+    attributes:
+      label: Minecraft Version
+      placeholder: "Example: 1.20.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options:
+        - Forge
+        - NeoForge
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your Question
+      description: Explain your question clearly and include any relevant context.
+      placeholder: "Describe what you are trying to do or understand."
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What Have You Tried?
+      description: Optional. Include configs, commands, or troubleshooting steps already attempted.
+      placeholder: |
+        Example:
+        - Tested on dedicated server
+        - Changed config values
+        - Tried /chunklock show
+        - Reviewed the wiki
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Screenshots
+      description: Optional. Paste logs or screenshots if they help explain the question.
+      render: text
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Confirmation
+      options:
+        - label: I checked the FAQ before opening this question.
+          required: true
+        - label: I could not find my answer in the FAQ.
+          required: true
+        - label: I included enough detail for the question to be understood.
+          required: true
