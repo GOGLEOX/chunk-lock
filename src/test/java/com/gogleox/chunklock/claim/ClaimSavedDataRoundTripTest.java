@@ -37,9 +37,8 @@ public final class ClaimSavedDataRoundTripTest {
         Collection<ClaimData> playerClaims = loaded.getClaimsForPlayer(ownerId);
         require(playerClaims.size() == 3, "Expected player claim query to return three claims");
 
-        int removed = loaded.removeAllClaimsForPlayer(ownerId);
-        require(removed == 3, "Expected all player claims to be removed");
-        require(loaded.size() == 0, "Expected no claims after removal");
+        require(loaded.removeClaim(new ResourceLocation("minecraft", "overworld"), sharedPosition), "Expected Overworld claim removal");
+        require(loaded.size() == 2, "Expected two claims after one removal");
 
         validateMapSyncPacket(ownerId);
 

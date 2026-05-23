@@ -80,6 +80,19 @@ public final class ClaimSavedData extends SavedData {
         return true;
     }
 
+    public boolean replaceClaim(ClaimData claim) {
+        ClaimKey key = ClaimKey.from(claim);
+
+        if (!claims.containsKey(key)) {
+            return false;
+        }
+
+        claims.put(key, claim);
+        setDirty();
+        ChunkLockMod.LOGGER.debug("Updated claim for {} at chunk {}, {}", claim.dimension(), claim.chunkX(), claim.chunkZ());
+        return true;
+    }
+
     public boolean removeClaim(ResourceLocation dimension, ChunkPos pos) {
         ClaimData removed = claims.remove(ClaimKey.from(dimension, pos));
 
@@ -102,6 +115,18 @@ public final class ClaimSavedData extends SavedData {
 
     public Collection<ClaimData> getAllClaims() {
         return Collections.unmodifiableCollection(new ArrayList<>(claims.values()));
+    }
+
+    public Collection<ClaimData> getClaimsInRange(ResourceLocation dimension, ChunkPos center, int radius) {
+        Objects.requireNonNull(dimension, "dimension");
+        Objects.requireNonNull(center, "center");
+
+        List<ClaimData> nearbyClaims = claims.values().stream()
+                .filter(claim -> claim.dimension().equals(dimension))
+                .filter(claim -> Math.abs(claim.chunkX() - center.x) <= radius)
+                .filter(claim -> Math.abs(claim.chunkZ() - center.z) <= radius)
+                .collect(Collectors.toCollection(ArrayList::new));
+        return Collections.unmodifiableList(nearbyClaims);
     }
 
     public int getClaimCount(UUID playerId) {

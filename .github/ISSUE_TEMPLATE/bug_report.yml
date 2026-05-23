@@ -1,0 +1,132 @@
+name: Bug Report
+description: Report a crash, claim bypass, config issue, HUD issue, or server/client problem.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a Chunk Lock issue. Please provide enough detail to reproduce and verify the problem.
+
+  - type: dropdown
+    id: issue_type
+    attributes:
+      label: Issue Type
+      description: Select the closest category.
+      options:
+        - Crash
+        - Claim protection bypass
+        - Claim ownership issue
+        - Trust or permission issue
+        - Config issue
+        - Dedicated server issue
+        - Client HUD or visual issue
+        - Command issue
+        - Data persistence issue
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: chunklock_version
+    attributes:
+      label: Chunk Lock Version
+      placeholder: "Example: 1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: minecraft_version
+    attributes:
+      label: Minecraft Version
+      placeholder: "Example: 1.20.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: loader
+    attributes:
+      label: Loader
+      options:
+        - Forge
+        - NeoForge
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: loader_version
+    attributes:
+      label: Loader Version
+      placeholder: "Example: Forge 47.4.20"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Singleplayer
+        - LAN world
+        - Dedicated server
+        - Modpack
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the issue clearly.
+      placeholder: "Explain what went wrong."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      placeholder: |
+        1. Claim a chunk.
+        2. Have another player try to interact with it.
+        3. Observe the result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: "What should have happened?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or Crash Report
+      description: Paste relevant latest.log, debug.log, or crash report content.
+      render: text
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other Installed Mods
+      description: List other mods or link the modpack if applicable.
+      placeholder: "Paste a mod list, modpack name, or modpack link."
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Confirmation
+      options:
+        - label: I tested this with the latest available Chunk Lock version.
+          required: true
+        - label: I checked existing issues before opening this report.
+          required: true
+        - label: I included logs or explained why logs are not available.
+          required: true

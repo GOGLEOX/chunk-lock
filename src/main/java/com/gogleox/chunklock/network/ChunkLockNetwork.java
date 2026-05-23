@@ -4,12 +4,14 @@ import com.gogleox.chunklock.ChunkLockMod;
 import com.gogleox.chunklock.claim.ClaimData;
 import com.gogleox.chunklock.claim.ClaimManager;
 import com.gogleox.chunklock.map.ClaimMapEntry;
+import com.gogleox.chunklock.show.ClaimBoundaryBuilder;
+import com.gogleox.chunklock.show.ClaimBoundaryState;
 import java.util.List;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
@@ -17,6 +19,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public final class ChunkLockNetwork {
     private static final String PROTOCOL_VERSION = "1";
+    private static final int CLAIM_SYNC_RADIUS = 1;
     private static final ClaimManager CLAIM_MANAGER = new ClaimManager();
 
     private static int packetId;
@@ -38,6 +41,15 @@ public final class ChunkLockNetwork {
                 ClaimMapSyncPacket::handle,
                 java.util.Optional.of(NetworkDirection.PLAY_TO_CLIENT)
         );
+
+        channel.registerMessage(
+                packetId++,
+                ShowClaimBoundaryPacket.class,
+                ShowClaimBoundaryPacket::encode,
+                ShowClaimBoundaryPacket::decode,
+                ShowClaimBoundaryPacket::handle,
+                java.util.Optional.of(NetworkDirection.PLAY_TO_CLIENT)
+        );
     }
 
     public static void syncTo(ServerPlayer player) {
@@ -45,13 +57,7 @@ public final class ChunkLockNetwork {
             return;
         }
 
-        ServerLevel level = player.getServer().getLevel(Level.OVERWORLD);
-
-        if (level == null) {
-            return;
-        }
-
-        List<ClaimMapEntry> entries = CLAIM_MANAGER.getAllClaims(level).stream()
+        List<ClaimMapEntry> entries = CLAIM_MANAGER.getClaimsInRange(player.serverLevel(), player.chunkPosition(), CLAIM_SYNC_RADIUS).stream()
                 .map(claim -> toMapEntry(claim, player))
                 .toList();
 
@@ -66,6 +72,36 @@ public final class ChunkLockNetwork {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             syncTo(player);
         }
+    }
+
+    public static void syncAffectingChunk(MinecraftServer server, ResourceLocation dimension, ChunkPos chunkPos) {
+        if (server == null || channel == null) {
+            return;
+        }
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (!player.serverLevel().dimension().location().equals(dimension)) {
+                continue;
+            }
+
+            ChunkPos playerChunk = player.chunkPosition();
+            if (Math.abs(playerChunk.x - chunkPos.x) <= CLAIM_SYNC_RADIUS
+                    && Math.abs(playerChunk.z - chunkPos.z) <= CLAIM_SYNC_RADIUS) {
+                syncTo(player);
+            }
+        }
+    }
+
+    public static void showChunkBoundary(ServerPlayer player, int durationTicks, int maxChunks) {
+        if (channel == null) {
+            return;
+        }
+
+        ClaimBoundaryState.PendingBoundary boundary = ClaimBoundaryBuilder.build(player.serverLevel(), player.chunkPosition(), durationTicks, maxChunks);
+        channel.send(
+                PacketDistributor.PLAYER.with(() -> player),
+                new ShowClaimBoundaryPacket(boundary.dimension(), boundary.segments(), boundary.durationTicks())
+        );
     }
 
     private static ClaimMapEntry toMapEntry(ClaimData claim, ServerPlayer player) {

@@ -1,24 +1,31 @@
 package com.gogleox.chunklock.claim;
 
 import com.gogleox.chunklock.config.ChunkLockConfig;
+import com.gogleox.chunklock.command.ChunkLockInspect;
 import com.gogleox.chunklock.network.ChunkLockNetwork;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.boss.wither.WitherBoss;
+import net.minecraft.world.entity.item.PrimedTnt;
+import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.WitherSkull;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.LevelAccessor;
+import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ShulkerBoxBlock;
@@ -26,27 +33,19 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.event.entity.EntityMobGriefingEvent;
 import net.minecraftforge.event.entity.player.FillBucketEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public final class ClaimEvents {
     private static final ClaimManager CLAIM_MANAGER = new ClaimManager();
     private static final Map<UUID, Long> LAST_DENIAL_MESSAGE_TICKS = new HashMap<>();
-
-    private static final Component CLAIMED_MESSAGE = Component.literal("Chunk claimed.").withStyle(ChatFormatting.GREEN);
-    private static final Component UNCLAIMED_MESSAGE = Component.literal("Chunk unclaimed.").withStyle(ChatFormatting.YELLOW);
-    private static final Component HELP_MESSAGE = Component.literal("Hold a map and sneak-right-click to claim or unclaim a chunk.")
-            .withStyle(ChatFormatting.GRAY);
-    private static final Component DENIED_MESSAGE = Component.literal("This chunk is claimed.").withStyle(ChatFormatting.RED);
-    private static final Component CLAIM_LIMIT_MESSAGE = Component.literal("You have reached your claim limit.").withStyle(ChatFormatting.RED);
-    private static final Component DIMENSION_DISABLED_MESSAGE = Component.literal("Claiming is disabled in this dimension.").withStyle(ChatFormatting.RED);
-    private static final Component FTB_DISABLED_MESSAGE = Component.literal("ChunkLock is disabled because FTB Chunks is loaded.").withStyle(ChatFormatting.RED);
+    private static final Map<UUID, PlayerChunkView> LAST_SYNCED_CHUNKS = new HashMap<>();
 
     private ClaimEvents() {
     }
@@ -55,6 +54,7 @@ public final class ClaimEvents {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ChunkLockNetwork.syncTo(player);
+            rememberChunk(player);
         }
     }
 
@@ -62,7 +62,37 @@ public final class ClaimEvents {
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             ChunkLockNetwork.syncTo(player);
+            rememberChunk(player);
         }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        LAST_DENIAL_MESSAGE_TICKS.remove(event.getEntity().getUUID());
+        LAST_SYNCED_CHUNKS.remove(event.getEntity().getUUID());
+
+        if (event.getEntity() instanceof ServerPlayer player) {
+            ChunkLockInspect.clear(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END
+                || event.player.level().isClientSide()
+                || !(event.player instanceof ServerPlayer player)) {
+            return;
+        }
+
+        PlayerChunkView currentView = PlayerChunkView.from(player);
+        PlayerChunkView lastView = LAST_SYNCED_CHUNKS.get(player.getUUID());
+
+        if (!currentView.equals(lastView)) {
+            ChunkLockNetwork.syncTo(player);
+            LAST_SYNCED_CHUNKS.put(player.getUUID(), currentView);
+        }
+
+        ChunkLockInspect.reportCurrentChunkIfChanged(player);
     }
 
     @SubscribeEvent
@@ -79,6 +109,7 @@ public final class ClaimEvents {
 
             if (player instanceof ServerPlayer serverPlayer && event.getLevel() instanceof ServerLevel serverLevel) {
                 handleClaimToolUse(event, serverPlayer, serverLevel);
+                ChunkLockInspect.reportChunk(serverPlayer, serverLevel, new ChunkPos(event.getPos()), true);
             }
 
             return;
@@ -106,8 +137,10 @@ public final class ClaimEvents {
         }
 
         if (serverPlayer.isShiftKeyDown() && !isClaimItem(mainHandItem)) {
-            serverPlayer.sendSystemMessage(HELP_MESSAGE);
+            serverPlayer.sendSystemMessage(message("message.chunklock.help", ChatFormatting.GRAY));
         }
+
+        ChunkLockInspect.reportChunk(serverPlayer, serverLevel, new ChunkPos(event.getPos()), true);
     }
 
     @SubscribeEvent
@@ -120,8 +153,19 @@ public final class ClaimEvents {
     }
 
     @SubscribeEvent
+    public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
+        if (event.getLevel().isClientSide()
+                || !(event.getEntity() instanceof ServerPlayer player)
+                || !(event.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+
+        ChunkLockInspect.reportChunk(player, level, new ChunkPos(event.getPos()), true);
+    }
+
+    @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
-        if (!ChunkLockConfig.ENABLE_BLOCK_BREAK_PROTECTION.get() || ChunkLockConfig.isDisabledByFtbChunks()) {
+        if (!ChunkLockConfig.ENABLE_BLOCK_BREAK_PROTECTION.get()) {
             return;
         }
 
@@ -141,7 +185,6 @@ public final class ClaimEvents {
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         if (!ChunkLockConfig.ENABLE_BLOCK_PLACE_PROTECTION.get()
-                || ChunkLockConfig.isDisabledByFtbChunks()
                 || !(event.getEntity() instanceof ServerPlayer serverPlayer)) {
             return;
         }
@@ -159,7 +202,6 @@ public final class ClaimEvents {
     @SubscribeEvent
     public static void onBucketFill(FillBucketEvent event) {
         if (!ChunkLockConfig.ENABLE_BUCKET_PROTECTION.get()
-                || ChunkLockConfig.isDisabledByFtbChunks()
                 || event.getLevel().isClientSide()) {
             return;
         }
@@ -182,75 +224,63 @@ public final class ClaimEvents {
 
     @SubscribeEvent
     public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
-        if (!ChunkLockConfig.ENABLE_EXPLOSION_PROTECTION.get()
-                || ChunkLockConfig.isDisabledByFtbChunks()
-                || !(event.getLevel() instanceof ServerLevel serverLevel)) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        Explosion explosion = event.getExplosion();
+        if (!shouldProtectExplosion(explosion)) {
             return;
         }
 
         event.getAffectedBlocks().removeIf(pos -> CLAIM_MANAGER.isClaimed(serverLevel, new ChunkPos(pos)));
     }
 
-    @SubscribeEvent
-    public static void onMobGriefing(EntityMobGriefingEvent event) {
-        if (!ChunkLockConfig.ENABLE_MOB_GRIEFING_PROTECTION.get()
-                || ChunkLockConfig.isDisabledByFtbChunks()
-                || !(event.getEntity().level() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        if (CLAIM_MANAGER.isClaimed(serverLevel, event.getEntity().chunkPosition())) {
-            event.setResult(Event.Result.DENY);
-        }
-    }
-
-    @SubscribeEvent
-    public static void onFarmlandTrample(BlockEvent.FarmlandTrampleEvent event) {
-        if (!ChunkLockConfig.ENABLE_MOB_GRIEFING_PROTECTION.get()
-                || ChunkLockConfig.isDisabledByFtbChunks()
-                || !(event.getLevel() instanceof ServerLevel serverLevel)) {
-            return;
-        }
-
-        Entity entity = event.getEntity();
-
-        if (entity instanceof Player) {
-            return;
-        }
-
-        if (CLAIM_MANAGER.isClaimed(serverLevel, new ChunkPos(event.getPos()))) {
-            event.setCanceled(true);
-        }
-    }
-
     private static void handleClaimToolUse(PlayerInteractEvent.RightClickBlock event, ServerPlayer serverPlayer, ServerLevel serverLevel) {
+        ItemStack toolStack = serverPlayer.getMainHandItem();
+        ItemStack repairStack = serverPlayer.getOffhandItem();
+
+        if (ClaimToolUsage.shouldAttemptRepair(repairStack)) {
+            ClaimToolUsage.RepairResult repairResult = ClaimToolUsage.tryRepair(serverPlayer, toolStack, repairStack);
+            if (repairResult == ClaimToolUsage.RepairResult.REPAIRED
+                    || repairResult == ClaimToolUsage.RepairResult.ALREADY_FULLY_REPAIRED) {
+                return;
+            }
+        }
+
+        if (!ClaimToolUsage.canUse(serverPlayer, toolStack)) {
+            return;
+        }
+
         ChunkPos chunkPos = new ChunkPos(event.getPos());
         ClaimData claim = CLAIM_MANAGER.getClaim(serverLevel, chunkPos);
 
         if (claim == null) {
-            serverPlayer.sendSystemMessage(messageForClaimResult(CLAIM_MANAGER.claimChunkWithResult(serverPlayer, serverLevel, chunkPos)));
+            ClaimManager.ClaimResult result = CLAIM_MANAGER.claimChunkWithResult(serverPlayer, serverLevel, chunkPos);
+            serverPlayer.sendSystemMessage(messageForClaimResult(result));
+
+            if (result == ClaimManager.ClaimResult.CLAIMED) {
+                ClaimToolUsage.consumeUse(serverPlayer, toolStack, event.getHand());
+            }
             return;
         }
 
         if (claim.ownerId().equals(serverPlayer.getUUID())) {
             if (CLAIM_MANAGER.unclaimChunk(serverPlayer, serverLevel, chunkPos)) {
-                serverPlayer.sendSystemMessage(UNCLAIMED_MESSAGE);
+                serverPlayer.sendSystemMessage(message("message.chunklock.unclaimed", ChatFormatting.YELLOW));
+                ClaimToolUsage.consumeUse(serverPlayer, toolStack, event.getHand());
             }
             return;
         }
 
-        serverPlayer.sendSystemMessage(Component.literal("This chunk is already claimed by " + claim.ownerLastKnownName() + ".")
-                .withStyle(ChatFormatting.RED));
+        serverPlayer.sendSystemMessage(message("message.chunklock.already_claimed_by", ChatFormatting.RED, claim.ownerLastKnownName()));
+        ClaimToolUsage.consumeUse(serverPlayer, toolStack, event.getHand());
     }
 
     private static boolean isProtectedFrom(ServerPlayer player, ServerLevel level, ChunkPos pos) {
-        if (ChunkLockConfig.isDisabledByFtbChunks()) {
-            return false;
-        }
-
         ClaimData claim = CLAIM_MANAGER.getClaim(level, pos);
 
-        if (claim == null || claim.ownerId().equals(player.getUUID())) {
+        if (claim == null || CLAIM_MANAGER.canAccess(player, level, pos)) {
             return false;
         }
 
@@ -258,7 +288,7 @@ public final class ClaimEvents {
     }
 
     private static boolean canBypassProtection(ServerPlayer player) {
-        return ChunkLockConfig.ALLOW_OPERATOR_BYPASS.get() && player.hasPermissions(2);
+        return ChunkLockConfig.ALLOW_CREATIVE_BYPASS.get() && player.isCreative();
     }
 
     private static boolean isProtectedInteractionTarget(ServerLevel level, BlockPos pos) {
@@ -302,7 +332,7 @@ public final class ClaimEvents {
     }
 
     private static void sendDenialMessage(ServerPlayer player) {
-        sendCooldownMessage(player, DENIED_MESSAGE);
+        sendCooldownMessage(player, message("message.chunklock.protection_denied", ChatFormatting.RED));
     }
 
     private static void sendCooldownMessage(ServerPlayer player, Component message) {
@@ -319,16 +349,47 @@ public final class ClaimEvents {
     }
 
     private static boolean isClaimItem(ItemStack stack) {
-        return !stack.isEmpty() && stack.is(ChunkLockConfig.resolveClaimItem());
+        return ChunkLockConfig.isConfiguredClaimItem(stack);
+    }
+
+    private static boolean shouldProtectExplosion(Explosion explosion) {
+        Entity source = explosion.getExploder();
+
+        if (source instanceof PrimedTnt) {
+            return ChunkLockConfig.PROTECT_AGAINST_TNT.get();
+        }
+
+        if (source instanceof Creeper) {
+            return ChunkLockConfig.PROTECT_AGAINST_CREEPERS.get();
+        }
+
+        if (source instanceof WitherBoss || source instanceof WitherSkull) {
+            return ChunkLockConfig.PROTECT_AGAINST_WITHER.get();
+        }
+
+        return ChunkLockConfig.PROTECT_AGAINST_OTHER_EXPLOSIONS.get();
     }
 
     private static Component messageForClaimResult(ClaimManager.ClaimResult result) {
         return switch (result) {
-            case CLAIMED -> CLAIMED_MESSAGE;
-            case CLAIM_LIMIT_REACHED -> CLAIM_LIMIT_MESSAGE;
-            case DIMENSION_DISABLED -> DIMENSION_DISABLED_MESSAGE;
-            case DISABLED_BY_FTB_CHUNKS -> FTB_DISABLED_MESSAGE;
-            case ALREADY_CLAIMED -> Component.literal("Unable to claim this chunk.").withStyle(ChatFormatting.RED);
+            case CLAIMED -> message("message.chunklock.claimed", ChatFormatting.GREEN);
+            case CLAIM_LIMIT_REACHED -> message("message.chunklock.claim_limit_reached", ChatFormatting.RED);
+            case DIMENSION_DISABLED -> message("message.chunklock.dimension_disabled", ChatFormatting.RED);
+            case ALREADY_CLAIMED -> message("message.chunklock.unable_to_claim", ChatFormatting.RED);
         };
+    }
+
+    private static Component message(String key, ChatFormatting formatting, Object... args) {
+        return Component.translatable(key, args).withStyle(formatting);
+    }
+
+    private static void rememberChunk(ServerPlayer player) {
+        LAST_SYNCED_CHUNKS.put(player.getUUID(), PlayerChunkView.from(player));
+    }
+
+    private record PlayerChunkView(ResourceLocation dimension, int chunkX, int chunkZ) {
+        private static PlayerChunkView from(ServerPlayer player) {
+            return new PlayerChunkView(player.serverLevel().dimension().location(), player.chunkPosition().x, player.chunkPosition().z);
+        }
     }
 }

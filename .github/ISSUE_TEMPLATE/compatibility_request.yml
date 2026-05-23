@@ -1,0 +1,102 @@
+name: Compatibility Request
+description: Request support for a mod, loader, Minecraft version, server platform, or integration.
+title: "[Compatibility]: "
+labels: ["compatibility", "request", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to request new compatibility support for Chunk Lock. This includes support for another mod, another loader, another Minecraft version, server software, modpacks, or map and minimap integrations.
+
+  - type: dropdown
+    id: compatibility_type
+    attributes:
+      label: Compatibility Type
+      description: What kind of compatibility are you requesting?
+      options:
+        - Mod compatibility
+        - Loader compatibility
+        - Minecraft version compatibility
+        - Server software compatibility
+        - Modpack compatibility
+        - Map or minimap integration
+        - API or hook support
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: requested_target
+    attributes:
+      label: Requested Target
+      description: Name the mod, loader, Minecraft version, server platform, modpack, or integration you want supported.
+      placeholder: "Example: NeoForge 1.21.1, Xaero's Minimap, JourneyMap, Mohist, Forge 1.20.1"
+    validations:
+      required: true
+
+  - type: input
+    id: requested_version
+    attributes:
+      label: Requested Version
+      description: Provide the exact version if applicable.
+      placeholder: "Example: 1.21.1, NeoForge 21.1.x, JourneyMap 5.9.x"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: current_support_status
+    attributes:
+      label: Current Support Status
+      description: What best describes the current situation?
+      options:
+        - Not currently supported
+        - Partially works
+        - Works but needs official support
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use Case
+      description: Why should Chunk Lock support this?
+      placeholder: "Explain the practical reason this compatibility target matters."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Compatibility Behavior
+      description: What should Chunk Lock do once this compatibility is implemented?
+      placeholder: "Example: Show claimed chunks on a minimap, support another loader, or respect claims during another mod's block interactions."
+    validations:
+      required: true
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Relevant Links
+      description: Link the requested mod, loader docs, modpack page, API docs, GitHub repo, or issue if available.
+      placeholder: "Paste CurseForge, Modrinth, GitHub, documentation, or API links."
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes
+      description: Add anything else that helps evaluate this request.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Scope Check
+      options:
+        - label: This request is specifically about compatibility support for Chunk Lock.
+          required: true
+        - label: I understand compatibility support may depend on API availability, loader stability, and maintenance cost.
+          required: true
+        - label: I checked existing issues before opening this request.
+          required: true

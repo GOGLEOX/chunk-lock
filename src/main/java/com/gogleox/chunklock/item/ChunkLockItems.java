@@ -23,7 +23,7 @@ public final class ChunkLockItems {
     }
 
     private static void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES || event.getTabKey() == CreativeModeTabs.SEARCH) {
             event.accept(CLAIM_STAKE);
         }
     }

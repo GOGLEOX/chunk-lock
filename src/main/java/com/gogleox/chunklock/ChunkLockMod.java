@@ -3,6 +3,7 @@ package com.gogleox.chunklock;
 import com.gogleox.chunklock.claim.ClaimEvents;
 import com.gogleox.chunklock.command.ChunkLockCommands;
 import com.gogleox.chunklock.config.ChunkLockConfig;
+import com.gogleox.chunklock.config.ChunkLockClientConfig;
 import com.gogleox.chunklock.item.ChunkLockItems;
 import com.gogleox.chunklock.network.ChunkLockNetwork;
 import com.mojang.logging.LogUtils;
@@ -25,6 +26,7 @@ public final class ChunkLockMod {
         ChunkLockNetwork.register();
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, ChunkLockConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ChunkLockClientConfig.SPEC);
         MinecraftForge.EVENT_BUS.register(ClaimEvents.class);
         MinecraftForge.EVENT_BUS.register(ChunkLockCommands.class);
 

@@ -1,138 +1,124 @@
-# ChunkLock
+# Chunk Lock
 
-ChunkLock is a lightweight NeoForge 1.20.1 chunk claiming mod for survival servers.
+Chunk Lock is a lightweight land protection mod for Forge `1.20.1` built for servers that want clean chunk claiming without dragging in a whole kingdom-management stack.
 
-Players can claim chunks, protect them from basic modification, and optionally expose synced claim data to client-side map integrations. The default claim item is `minecraft:map`.
+It is fast to understand, easy to run, and deliberately focused. Claim land. Protect builds. Trust the right people. Keep wilderness wild. Move on with the rest of your server.
 
-Paper is intentionally not the default claim item because paper is reserved for the WorldNotes mod.
+## Why Chunk Lock
 
-## What ChunkLock Does
+Some servers want protection without the baggage.
 
-- Lets players claim and unclaim chunks.
-- Stores claims persistently in server world saved data.
-- Protects claimed chunks from non-owner block breaking, block placing, container interaction, and bucket fluid interaction.
-- Provides operator/admin commands.
-- Supports configurable claim limits and dimension rules.
-- Provides optional JourneyMap overlay support when JourneyMap is installed.
+They do not need factions.
+They do not need economy hooks.
+They do not need giant menus, rank ladders, or a wall of admin systems just to stop random griefing.
 
-## What ChunkLock Does Not Do
+Chunk Lock is built for that space.
 
-- No teams.
-- No GUI.
-- No chunk loading.
-- No economy.
-- No permission plugin integration yet.
-- No Xaero map overlay yet.
-- No FTB Chunks dependency or migration layer.
+It gives players a simple claim flow and gives server owners practical control, while staying small enough to fit naturally into survival servers, modpacks, and utility-first setups.
 
-## Claiming Chunks
+## What Players Get
 
-Default item: `minecraft:map`
+- Simple chunk claiming with a configurable claim tool
+- Clear wilderness vs claimed-land behavior
+- Trusted-player access on a per-claim basis
+- A small Claim HUD that quietly tells players where they are
+- Connected-claim boundary previews with `/chunklock show`
+- Optional limited-use claim tools for tighter server balance
+- Optional paper-based repair for worn claim tools
 
-Sneak-right-click a block while holding the configured claim item:
+## What Server Owners Get
 
-- If the chunk is unclaimed, it is claimed for you.
-- If you own the chunk, it is unclaimed.
-- If someone else owns the chunk, the action is denied.
+- Straightforward land protection without feature bloat
+- Practical admin inspection with `/chunklock inspect`
+- Configurable explosion protection for claimed chunks
+- Optional JourneyMap support
+- Dedicated-server-safe client features
+- A mod that stays in its lane
 
-An optional item, `chunklock:claim_stake`, is included. Servers may switch to it with:
+## The Feel
 
-```toml
-claim_item = "chunklock:claim_stake"
-```
+Chunk Lock is meant to feel invisible when things are going well.
 
-## Commands
+Players claim a chunk and keep building.
+Trusted friends help out.
+Unclaimed land stays open.
+Admins can check ownership quickly when they need to.
 
-Player commands:
+There is no extra ceremony unless you want it.
 
-- `/chunklock claim`
-- `/chunklock unclaim`
-- `/chunklock info`
-- `/chunklock list`
+## Feature Highlights
 
-Admin commands, permission level 2+:
+### Clean Claiming
 
-- `/chunklock reload`
-- `/chunklock admin unclaim`
-- `/chunklock admin clearplayer <player>`
-- `/chunklock admin listplayer <player>`
+The default claim tool is `minecraft:map`, but servers can swap that out if they want a different rhythm. The claim flow stays simple and consistent.
 
-Admin player commands can target cached/offline profiles when Minecraft can resolve the profile.
+### Practical Protection
 
-## Config Options
+Claimed chunks can protect against building, breaking, container access, bucket use, and configured explosion sources. Wilderness keeps its normal vanilla feel.
 
-Common config: `config/chunklock-common.toml`
+### Trust Without Bloat
 
-```toml
-max_claims_per_player = 25
-claim_item = "minecraft:map"
-allow_operator_bypass = true
-allow_claiming_in_overworld = true
-allow_claiming_in_nether = false
-allow_claiming_in_end = false
-enable_block_break_protection = true
-enable_block_place_protection = true
-enable_container_protection = true
-enable_bucket_protection = true
-enable_explosion_protection = false
-enable_mob_griefing_protection = false
-denial_message_cooldown_ticks = 40
-disable_if_ftb_chunks_loaded = false
-enable_journeymap_overlay = true
-show_other_player_claims = true
-show_claim_owner_names = true
-```
+Owners can trust individual players in individual claims. That keeps cooperation easy without turning the mod into a full permission framework.
 
-Invalid claim item IDs fall back to `minecraft:map` and log a warning.
+### Quiet Visibility
 
-## Map Integration Status
+The Claim HUD gives players a quick read on whether they are in wilderness or in someone else's land. It stays brief, readable, and out of the way.
 
-JourneyMap support is optional. ChunkLock runs normally without JourneyMap installed.
+### Better Claim Outlines
 
-When JourneyMap is installed on the client, claims can appear as chunk-boundary overlays:
+`/chunklock show` does more than outline one chunk. In connected claims, it can show the outer perimeter of the full same-owner area, so players get a much better sense of the land they are standing in.
 
-- Green: claims owned by the current player.
-- Red: claims owned by other players.
-- Tooltip/label: `Claimed by: <owner>`.
+### Limited-Use Claim Tools
 
-No actual dependency on JourneyMap is required for dedicated servers.
+If your server wants claiming to carry a little weight, Chunk Lock can track claim-tool uses, warn players when a tool is running low, and let them repair it with paper.
 
-Xaero integration is not implemented yet.
+## Good Fit For
 
-## Server Admin Notes
+- Survival servers that want low-friction protection
+- Modpacks that need chunk claiming without a full town system
+- Small community servers
+- Utility-focused server stacks
+- Admins who want simple moderation tools and predictable behavior
 
-- Creative mode does not bypass protection by itself.
-- Operators bypass only when `allow_operator_bypass = true`.
-- Nether and End claiming are disabled by default.
-- Explosion and mob griefing protections are disabled by default to preserve vanilla behavior unless explicitly enabled.
-- If using FTB Chunks on the same server, consider `disable_if_ftb_chunks_loaded = true`.
-- Paper remains available for WorldNotes because ChunkLock defaults to maps.
+## Not Trying To Be
 
-## Known Limitations
+- a faction mod
+- a towny clone
+- a GUI-heavy land-management suite
+- an economy system
+- a chunk loader
+- a social hierarchy framework
 
-- No teams or shared ownership.
-- No GUI management screen.
-- No chunk loading.
-- No economy or rent/upkeep.
-- JourneyMap support is optional and client-side only.
-- Xaero map overlays are not implemented.
-- FTB Chunks compatibility is limited to optional self-disable behavior.
+That is intentional.
 
-## Manual Test Checklist
+## Compatibility
 
-- Fresh client launch.
-- Fresh dedicated server launch.
-- Claim with map.
-- Unclaim with map.
-- Confirm sneak-right-clicking with map does not create filled maps.
-- Claim persistence after restart.
-- Two-player protection test.
-- Operator bypass test.
-- Config reload test.
-- JourneyMap installed test.
-- Xaero installed test.
-- FTB Chunks installed test.
+Chunk Lock is built for:
 
-## Attribution
+- Minecraft `1.20.1`
+- Forge `47.4.20+`
+- Java `17`
 
-ChunkLock is part of the Worldloom-adjacent tooling work by GOGLEO (GitHub: lefoxxy).
+JourneyMap support is optional.
+
+## Need The Technical Details?
+
+This README stays focused on the big picture.
+
+For command reference, configuration details, setup notes, behavior specifics, and troubleshooting, use the project wiki and issue forms.
+
+## Support
+
+GitHub issue forms are the main support path for:
+
+- bug reports
+- focused feature requests
+- compatibility requests
+
+## License
+
+Chunk Lock is released under the `MIT` license.
+
+## GOGLEOX Foundry
+
+Chunk Lock by GOGLEOX Foundry.

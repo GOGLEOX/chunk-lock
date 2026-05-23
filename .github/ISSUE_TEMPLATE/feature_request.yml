@@ -1,0 +1,74 @@
+name: Feature Request
+description: Suggest a focused Chunk Lock improvement.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Chunk Lock is intended to stay lightweight, server-friendly, and low-bloat. Requests should stay focused on chunk claiming, protection, visibility, configuration, or administration.
+
+  - type: dropdown
+    id: feature_area
+    attributes:
+      label: Feature Area
+      options:
+        - Claim protection
+        - Trust or permissions
+        - Admin tools
+        - Config options
+        - HUD or visual feedback
+        - Commands
+        - Documentation
+        - Server management
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Use Case
+      description: What practical problem would this solve?
+      placeholder: "Explain the problem or workflow friction."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature as simply as possible.
+      placeholder: "Explain what you want Chunk Lock to do."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Optional. Mention workarounds, existing commands, or other mods.
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Importance
+      options:
+        - Nice to have
+        - Useful for many players
+        - Important for servers or modpacks
+        - Critical for adoption
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope Check
+      options:
+        - label: This request fits Chunk Lock's purpose as a lightweight chunk claiming and protection mod.
+          required: true
+        - label: This request does not require economy, factions, chunk loading, teleporting, ranks, or unrelated admin systems.
+          required: true

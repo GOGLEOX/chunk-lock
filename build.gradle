@@ -1,17 +1,44 @@
 plugins {
     id 'java'
-    id 'net.neoforged.moddev.legacyforge' version '2.0.141'
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
 }
 
 version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = mod_id
+    archivesName = "${mod_id}-${minecraft_version}-forge"
 }
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(17)
+}
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                chunklock {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'debug'
+            args '--nogui'
+            mods {
+                chunklock {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
 }
 
 repositories {
@@ -24,7 +51,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'curse.maven:journeymap-32274:4873863'
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    compileOnly 'curse.maven:journeymap-32274:5789363'
 }
 
 sourceSets {
@@ -34,38 +62,10 @@ sourceSets {
     }
 }
 
-legacyForge {
-    enable {
-        neoForgeVersion = "${minecraft_version}-${neo_version}"
-    }
-    validateAccessTransformers = true
-
-    runs {
-        client {
-            client()
-            gameDirectory = project.file('run')
-            systemProperty 'forge.logging.console.level', 'debug'
-        }
-
-        server {
-            server()
-            gameDirectory = project.file('run')
-            systemProperty 'forge.logging.console.level', 'debug'
-            programArgument '--nogui'
-        }
-    }
-
-    mods {
-        chunklock {
-            sourceSet sourceSets.main
-        }
-    }
-}
-
 tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
             minecraft_version_range: minecraft_version_range,
-            neo_version_range      : neo_version_range,
+            forge_version_range    : forge_version_range,
             loader_version_range   : loader_version_range,
             mod_id                 : mod_id,
             mod_name               : mod_name,
@@ -96,6 +96,7 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(Jar).configureEach {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveVersion = "v${project.version}"
 }
 
 tasks.register('validateClaimStorage', JavaExec) {

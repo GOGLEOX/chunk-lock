@@ -7,14 +7,15 @@ modId="${mod_id}"
 version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
+logoFile="chunklock.png"
 description='''
-ChunkLock foundation for future chunk claim infrastructure.
+Chunk Lock adds lightweight chunk claiming, trusted-player access, and practical land protection for Forge servers.
 '''
 
 [[dependencies.${mod_id}]]
     modId="forge"
     mandatory=true
-    versionRange="${neo_version_range}"
+    versionRange="${forge_version_range}"
     ordering="NONE"
     side="BOTH"
 
@@ -24,3 +25,10 @@ ChunkLock foundation for future chunk claim infrastructure.
     versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="journeymap"
+    mandatory=false
+    versionRange="[5.10.3,)"
+    ordering="AFTER"
+    side="CLIENT"

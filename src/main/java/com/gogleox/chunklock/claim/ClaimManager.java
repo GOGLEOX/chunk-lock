@@ -15,8 +15,7 @@ public final class ClaimManager {
         CLAIMED,
         ALREADY_CLAIMED,
         CLAIM_LIMIT_REACHED,
-        DIMENSION_DISABLED,
-        DISABLED_BY_FTB_CHUNKS
+        DIMENSION_DISABLED
     }
 
     public ClaimData getClaim(ServerLevel level, ChunkPos pos) {
@@ -32,15 +31,22 @@ public final class ClaimManager {
         return claim != null && claim.ownerId().equals(player.getUUID());
     }
 
+    public boolean canAccess(ServerPlayer player, ServerLevel level, ChunkPos pos) {
+        ClaimData claim = getClaim(level, pos);
+
+        if (claim == null) {
+            return true;
+        }
+
+        UUID playerId = player.getUUID();
+        return claim.ownerId().equals(playerId) || claim.isTrusted(playerId);
+    }
+
     public boolean claimChunk(ServerPlayer player, ServerLevel level, ChunkPos pos) {
         return claimChunkWithResult(player, level, pos) == ClaimResult.CLAIMED;
     }
 
     public ClaimResult claimChunkWithResult(ServerPlayer player, ServerLevel level, ChunkPos pos) {
-        if (ChunkLockConfig.isDisabledByFtbChunks()) {
-            return ClaimResult.DISABLED_BY_FTB_CHUNKS;
-        }
-
         if (!ChunkLockConfig.isClaimingAllowedIn(level)) {
             return ClaimResult.DIMENSION_DISABLED;
         }
@@ -75,7 +81,7 @@ public final class ClaimManager {
                 stored
         );
         if (stored) {
-            ChunkLockNetwork.syncAll(level.getServer());
+            ChunkLockNetwork.syncAffectingChunk(level.getServer(), dimensionId, pos);
             return ClaimResult.CLAIMED;
         }
 
@@ -97,7 +103,7 @@ public final class ClaimManager {
                 removed
         );
         if (removed) {
-            ChunkLockNetwork.syncAll(level.getServer());
+            ChunkLockNetwork.syncAffectingChunk(level.getServer(), dimensionId(level), pos);
         }
 
         return removed;
@@ -105,18 +111,41 @@ public final class ClaimManager {
 
     public boolean removeClaim(ServerLevel level, ChunkPos pos) {
         boolean removed = savedData(level).removeClaim(dimensionId(level), pos);
-        ChunkLockMod.LOGGER.debug(
-                "Admin claim removal for {} at chunk {}, {} removed={}",
-                dimensionId(level),
-                pos.x,
-                pos.z,
-                removed
-        );
+
         if (removed) {
-            ChunkLockNetwork.syncAll(level.getServer());
+            ChunkLockNetwork.syncAffectingChunk(level.getServer(), dimensionId(level), pos);
         }
 
         return removed;
+    }
+
+    public boolean updateClaimAccess(ServerLevel level, ChunkPos pos, ClaimAccessUpdate update) {
+        ClaimData claim = getClaim(level, pos);
+
+        if (claim == null) {
+            return false;
+        }
+
+        ClaimData updated = update.apply(claim);
+        boolean stored = savedData(level).replaceClaim(updated);
+
+        return stored;
+    }
+
+    public boolean transferClaim(ServerLevel level, ChunkPos pos, ServerPlayer newOwner) {
+        ClaimData claim = getClaim(level, pos);
+
+        if (claim == null) {
+            return false;
+        }
+
+        boolean stored = savedData(level).replaceClaim(claim.withOwner(newOwner.getUUID(), newOwner.getGameProfile().getName()));
+
+        if (stored) {
+            ChunkLockNetwork.syncAffectingChunk(level.getServer(), dimensionId(level), pos);
+        }
+
+        return stored;
     }
 
     public Collection<ClaimData> getClaimsForPlayer(UUID playerId) {
@@ -125,6 +154,10 @@ public final class ClaimManager {
 
     public Collection<ClaimData> getAllClaims(ServerLevel level) {
         return savedData(level).getAllClaims();
+    }
+
+    public Collection<ClaimData> getClaimsInRange(ServerLevel level, ChunkPos center, int radius) {
+        return savedData(level).getClaimsInRange(dimensionId(level), center, radius);
     }
 
     public int getClaimCount(UUID playerId) {
@@ -139,6 +172,11 @@ public final class ClaimManager {
         }
 
         return removed;
+    }
+
+    @FunctionalInterface
+    public interface ClaimAccessUpdate {
+        ClaimData apply(ClaimData claim);
     }
 
     private ClaimSavedData savedData(ServerLevel level) {
